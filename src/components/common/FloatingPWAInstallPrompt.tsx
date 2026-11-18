@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone, Share2, PlusSquare, CheckCircle2, Clock } from 'lucide-react';
+import { Download, X, Share2, PlusSquare, CheckCircle2, Clock, Smartphone, Loader2 } from 'lucide-react';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 export const FloatingPWAInstallPrompt: React.FC = () => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [isOpen, setIsOpen] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(8); // 8 seconds duration requested by user
+  const [timeLeft, setTimeLeft] = useState(12); // Give comfortable time
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [androidNotice, setAndroidNotice] = useState(false);
 
-  // If already installed as a PWA, do NOT show
+  // If already installed in standalone mode on mobile or desktop, do NOT show
   if (isInstalled) {
     return null;
   }
 
-  // 8-second countdown timer
+  // Countdown timer: pauses when user is interacting or viewing guide
   useEffect(() => {
-    if (!isOpen || showIOSGuide) return;
+    if (!isOpen || showIOSGuide || isInstalling || androidNotice) return;
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -30,25 +32,39 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, showIOSGuide]);
+  }, [isOpen, showIOSGuide, isInstalling, androidNotice]);
 
   const handleDismiss = () => {
     setIsOpen(false);
   };
 
   const handleInstall = async () => {
-    if (isInstallable) {
-      const outcome = await install();
-      if (outcome) {
+    setIsInstalling(true);
+    setAndroidNotice(false);
+
+    try {
+      const result = await install();
+      setIsInstalling(false);
+
+      if (result.success) {
         setInstalledSuccess(true);
         setTimeout(() => {
           setIsOpen(false);
         }, 2500);
+      } else if (result.reason === 'ios') {
+        // iOS Safari strictly requires using Safari Share Sheet
+        setShowIOSGuide(true);
+      } else if (result.reason === 'dismissed') {
+        // User cancelled the native browser prompt dialog
+      } else if (result.reason === 'already_installed') {
+        setIsOpen(false);
+      } else {
+        // In case the browser hasn't made prompt available yet
+        setAndroidNotice(true);
       }
-    } else if (isIOS) {
-      setShowIOSGuide(true);
-    } else {
-      setShowIOSGuide(true);
+    } catch (err) {
+      setIsInstalling(false);
+      console.warn('Installation attempt notice:', err);
     }
   };
 
@@ -58,14 +74,14 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
 
   return (
     <>
-      {/* Floating 8-Second Window */}
+      {/* Floating Prompt Window */}
       <aside
         aria-label="Aviso de instalación de la aplicación"
         className="fixed bottom-20 left-3 right-3 sm:bottom-6 sm:right-6 sm:left-auto sm:max-w-md z-60 animate-in fade-in slide-in-from-bottom-5 duration-300"
       >
         <div className="bg-slate-950/95 text-white rounded-2xl p-4 shadow-2xl border-2 border-amber-400 backdrop-blur-md relative overflow-hidden flex flex-col gap-3">
           
-          {/* Top row: App Icon, Info, Timer Badge & Close (Quitar) Button */}
+          {/* Top row: App Icon, Info, Timer Badge & Close Button */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <img
@@ -84,7 +100,7 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 leading-snug mt-0.5 line-clamp-2">
-                  Agrega Fino a tu pantalla de inicio para abrirla como app nativa y usarla sin conexión.
+                  Instala Fino directamente en tu teléfono para abrirla como app nativa con acceso rápido e iconos oficiales.
                 </p>
               </div>
             </div>
@@ -94,12 +110,22 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
               type="button"
               onClick={handleDismiss}
               className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
-              title="Quitar ventana flotante"
-              aria-label="Quitar ventana flotante"
+              title="Quitar aviso"
+              aria-label="Quitar aviso"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Android in-browser notice if direct prompt wasn't supported */}
+          {androidNotice && (
+            <div className="p-2.5 bg-amber-400/15 border border-amber-400/40 rounded-xl text-[11px] text-amber-200 flex items-center gap-2 animate-in fade-in">
+              <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                Para instalarla, toca el menú de tu navegador <strong>(⋮)</strong> y selecciona <strong>"Instalar aplicación"</strong> o "Agregar a pantalla principal".
+              </span>
+            </div>
+          )}
 
           {/* Action Row: Quitar button & Install button */}
           <div className="flex items-center gap-2 pt-1">
@@ -113,19 +139,29 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
             <button
               type="button"
               onClick={handleInstall}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-[#FFCF00] hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              disabled={isInstalling}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-[#FFCF00] hover:bg-amber-400 disabled:opacity-75 text-slate-950 font-black text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
             >
-              <Download className="w-4 h-4 stroke-[2.5]" />
-              <span>Instalar App ahora</span>
+              {isInstalling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                  <span>Abriendo instalación...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 stroke-[2.5]" />
+                  <span>Instalar en mi teléfono</span>
+                </>
+              )}
             </button>
           </div>
 
-          {/* 8-Second Visual Progress Indicator Bar */}
+          {/* Visual Progress Indicator Bar */}
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 transition-all ease-linear"
               style={{
-                width: `${(timeLeft / 8) * 100}%`,
+                width: `${(timeLeft / 12) * 100}%`,
                 transitionDuration: '1000ms',
               }}
             />
@@ -138,11 +174,11 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
       {installedSuccess && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-70 bg-slate-950 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          <span className="text-xs font-bold">¡Fino instalada correctamente en tu dispositivo!</span>
+          <span className="text-xs font-bold">¡Fino se instaló correctamente en tu dispositivo!</span>
         </div>
       )}
 
-      {/* iOS Safari Guided Modal */}
+      {/* iOS Safari Guided Modal (Only when running on iPhone / iPad) */}
       {showIOSGuide && (
         <div className="fixed inset-0 z-70 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95">
@@ -154,8 +190,8 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
                   className="w-10 h-10 rounded-xl shadow-xs border border-amber-400/40 object-cover"
                 />
                 <div>
-                  <h3 className="text-base font-black text-slate-950">Instalar Fino</h3>
-                  <p className="text-xs font-semibold text-slate-500">En la pantalla de inicio</p>
+                  <h3 className="text-base font-black text-slate-950">Instalar en iPhone</h3>
+                  <p className="text-xs font-semibold text-slate-500">Pantalla de inicio de iOS</p>
                 </div>
               </div>
               <button
@@ -169,7 +205,7 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
 
             <div className="space-y-3 text-xs text-slate-700">
               <p className="font-medium text-slate-600 leading-relaxed">
-                Sigue estos pasos rápidos para instalar <strong>Fino</strong> con su icono oficial:
+                Apple requiere que las apps en iOS se agreguen a través de Safari:
               </p>
 
               <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
@@ -178,9 +214,9 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
                     1
                   </div>
                   <div className="leading-tight">
-                    <span className="font-bold text-slate-900 block">En iPhone / iPad (Safari):</span>
+                    <span className="font-bold text-slate-900 block">Botón Compartir:</span>
                     <span className="text-slate-600">
-                      Toca el botón <Share2 className="w-3.5 h-3.5 inline mx-0.5 text-blue-600" /> <strong>Compartir</strong> en la barra inferior de Safari.
+                      Toca el icono <Share2 className="w-3.5 h-3.5 inline mx-0.5 text-blue-600" /> en la barra inferior de Safari.
                     </span>
                   </div>
                 </div>
@@ -190,21 +226,9 @@ export const FloatingPWAInstallPrompt: React.FC = () => {
                     2
                   </div>
                   <div className="leading-tight">
-                    <span className="font-bold text-slate-900 block">Agregar a Inicio:</span>
+                    <span className="font-bold text-slate-900 block">Agregar a pantalla de inicio:</span>
                     <span className="text-slate-600">
-                      Despliega el menú hacia abajo y selecciona <PlusSquare className="w-3.5 h-3.5 inline mx-0.5 text-amber-600" /> <strong>"Agregar a pantalla de inicio"</strong>.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-xs">
-                    3
-                  </div>
-                  <div className="leading-tight">
-                    <span className="font-bold text-slate-900 block">En Android (Chrome / Edge):</span>
-                    <span className="text-slate-600">
-                      Toca los tres puntos <strong>(⋮)</strong> arriba a la derecha y selecciona <strong>"Instalar aplicación"</strong>.
+                      Desliza hacia abajo y toca <PlusSquare className="w-3.5 h-3.5 inline mx-0.5 text-amber-600" /> <strong>"Agregar a pantalla de inicio"</strong>.
                     </span>
                   </div>
                 </div>

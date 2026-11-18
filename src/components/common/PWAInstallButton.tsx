@@ -21,16 +21,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   }
 
   const handleInstallClick = async () => {
-    if (isInstallable) {
-      const installed = await install();
-      if (installed) {
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 4000);
-      }
-    } else if (isIOS) {
-      setShowIOSGuide(true);
-    } else {
-      // General instructions fallback
+    const result = await install();
+    if (result.success) {
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 4000);
+    } else if (result.reason === 'ios') {
       setShowIOSGuide(true);
     }
   };

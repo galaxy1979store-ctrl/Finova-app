@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Fino",
+  "name": "Fino - Finanzas",
   "short_name": "Fino",
   "description": "Fino: Control de Finanzas, Ventas, Gastos, Deudas y Facturación",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "theme_color": "#FFCF00",
-  "background_color": "#0F172A",
+  "background_color": "#FAF8F5",
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {

@@ -55,30 +55,32 @@ export const initialBusinessAccounts: BusinessAccount[] = [
   },
 ];
 
-// Usuarios del sistema con acceso multi-cuenta
+// Usuarios del sistema con acceso multi-cuenta (Administrador y Usuario)
 export const initialUsers: UserAccount[] = [
   {
-    id: 'usr-ysbelia-1',
-    email: 'ysbeliarojas79@gmail.com',
-    passwordHash: '12345678',
-    fullName: 'Ysbelia Rojas',
-    businessName: 'Ysbeshop',
-    role: 'owner',
-    plan: 'unlimited',
-    status: 'active',
-    createdAt: '2026-09-12',
-    lastLogin: 'Hoy',
-  },
-  {
     id: 'usr-admin-1',
-    email: 'luis31garciarojas@gmail.com',
+    username: 'admin',
+    email: 'admin@finova.app',
     passwordHash: '12345678',
-    fullName: 'Luis García',
+    fullName: 'Administrador (Luis García)',
     businessName: 'Galaxy store Luis',
     role: 'superadmin',
     plan: 'unlimited',
     status: 'active',
     createdAt: '2026-01-01',
+    lastLogin: 'Hoy',
+  },
+  {
+    id: 'usr-ysbelia-1',
+    username: 'usuario',
+    email: 'usuario@finova.app',
+    passwordHash: '12345678',
+    fullName: 'Usuario (Ysbelia Rojas)',
+    businessName: 'Ysbeshop',
+    role: 'owner',
+    plan: 'unlimited',
+    status: 'active',
+    createdAt: '2026-09-12',
     lastLogin: 'Hoy',
   },
 ];

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Mail,
   Lock,
   User,
   Building2,
@@ -9,6 +8,9 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  Crown,
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { FinovaLogo } from '../common/FinovaLogo';
@@ -21,15 +23,15 @@ export const AuthScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Login form state - Pre-filled with Ysbelia Rojas account
-  const [loginEmail, setLoginEmail] = useState('ysbeliarojas79@gmail.com');
+  // Login form state
+  const [loginIdentifier, setLoginIdentifier] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('12345678');
   const [rememberMe, setRememberMe] = useState(true);
 
   // Register form state
   const [regFullName, setRegFullName] = useState('');
   const [regBusinessName, setRegBusinessName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
+  const [regIdentifier, setRegIdentifier] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
 
@@ -38,11 +40,30 @@ export const AuthScreen: React.FC = () => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    const res = login(loginEmail, loginPassword, rememberMe);
+    if (!loginIdentifier.trim() || !loginPassword) {
+      setErrorMessage('Por favor ingresa tu usuario o correo y contraseña.');
+      return;
+    }
+
+    const res = login(loginIdentifier, loginPassword, rememberMe);
     if (!res.success) {
-      setErrorMessage(res.error || 'Credenciales inválidas. Revisa tu correo o contraseña.');
+      setErrorMessage(res.error || 'Credenciales inválidas. Revisa tu usuario o contraseña.');
     } else {
-      setSuccessMessage('Iniciando sesión...');
+      setSuccessMessage('¡Sesión iniciada con éxito! Entrando al sistema...');
+    }
+  };
+
+  const handleQuickFill = (identifier: string, pass: string, autoSubmit = false) => {
+    setLoginIdentifier(identifier);
+    setLoginPassword(pass);
+    setErrorMessage('');
+    if (autoSubmit) {
+      const res = login(identifier, pass, true);
+      if (!res.success) {
+        setErrorMessage(res.error || 'Error al iniciar sesión.');
+      } else {
+        setSuccessMessage('¡Sesión iniciada con éxito! Entrando al sistema...');
+      }
     }
   };
 
@@ -60,7 +81,7 @@ export const AuthScreen: React.FC = () => {
       return;
     }
 
-    const res = register(regFullName, regBusinessName, regEmail, regPassword, rememberMe);
+    const res = register(regFullName, regBusinessName, regIdentifier, regPassword, rememberMe);
     if (!res.success) {
       setErrorMessage(res.error || 'Error al registrar la cuenta.');
     } else {
@@ -75,11 +96,11 @@ export const AuthScreen: React.FC = () => {
         <div className="max-w-md w-full">
           {/* Brand Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center mb-3">
+            <div className="inline-flex items-center justify-center mb-2.5">
               <FinovaLogo size="xl" variant="full" />
             </div>
-            <p className="text-sm text-slate-600 font-medium max-w-sm mx-auto">
-              Fynova es una app para finanzas de empresas o personales.
+            <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-sm mx-auto">
+              Plataforma de finanzas, inventario, deudas y facturación para empresas o personales.
             </p>
           </div>
 
@@ -134,19 +155,99 @@ export const AuthScreen: React.FC = () => {
             {/* LOGIN FORM */}
             {mode === 'login' ? (
               <form onSubmit={handleLogin} className="space-y-4">
-                <div>
+                {/* Standard System Accounts Callout */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                      Cuentas del Sistema disponibles
+                    </span>
+                    <span className="text-[10px] text-slate-400">Toca para rellenar</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Administrator Account */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickFill('admin', '12345678')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                        loginIdentifier === 'admin'
+                          ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span className="text-xs font-black text-slate-900">Administrador</span>
+                        </div>
+                        {loginIdentifier === 'admin' && (
+                          <span className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-slate-950">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        Usuario: <span className="font-mono font-bold text-slate-800">admin</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        Clave: <span className="font-mono font-bold text-slate-800">12345678</span>
+                      </p>
+                      <div className="mt-2 pt-1 border-t border-slate-200/60 flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-amber-700">Superadmin</span>
+                        <span className="text-[9px] text-slate-400 hover:text-slate-900 font-bold">Usar →</span>
+                      </div>
+                    </button>
+
+                    {/* Normal User Account */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickFill('usuario', '12345678')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                        loginIdentifier === 'usuario'
+                          ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-slate-700" />
+                          <span className="text-xs font-black text-slate-900">Usuario</span>
+                        </div>
+                        {loginIdentifier === 'usuario' && (
+                          <span className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-slate-950">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        Usuario: <span className="font-mono font-bold text-slate-800">usuario</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        Clave: <span className="font-mono font-bold text-slate-800">12345678</span>
+                      </p>
+                      <div className="mt-2 pt-1 border-t border-slate-200/60 flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-slate-600">Usuario normal</span>
+                        <span className="text-[9px] text-slate-400 hover:text-slate-900 font-bold">Usar →</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-1">
                   <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                    Correo Electrónico
+                    Usuario o Correo Electrónico
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="email"
+                      type="text"
                       required
                       autoFocus
-                      value={loginEmail}
-                      onChange={e => setLoginEmail(e.target.value)}
-                      placeholder="tu@correo.com"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      value={loginIdentifier}
+                      onChange={e => setLoginIdentifier(e.target.value)}
+                      placeholder="admin, usuario o tu@correo.com"
                       className="w-full pl-10 pr-3.5 py-2.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                     />
                   </div>
@@ -154,7 +255,7 @@ export const AuthScreen: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                    Contraseña
+                    Contraseña (Clave)
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -177,34 +278,20 @@ export const AuthScreen: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-600 select-none">
+                {/* Session Persistence Indicator */}
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/70 space-y-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-900 select-none">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={e => setRememberMe(e.target.checked)}
                       className="rounded text-amber-500 focus:ring-amber-400 w-3.5 h-3.5 cursor-pointer"
                     />
-                    <span>Recordar mi sesión en este dispositivo</span>
+                    <span>Mantener sesión iniciada permanentemente</span>
                   </label>
-                </div>
-
-                <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-bold text-amber-950">Ysbeshop (Ysbelia Rojas)</p>
-                    <p className="text-[11px] text-amber-800">14 productos · 29 cuentas por cobrar · 46 ventas</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('ysbeliarojas79@gmail.com');
-                      setLoginPassword('12345678');
-                      login('ysbeliarojas79@gmail.com', '12345678', true);
-                    }}
-                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-colors shrink-0"
-                  >
-                    Entrar
-                  </button>
+                  <p className="text-[10px] text-slate-600 pl-5.5 leading-tight">
+                    Tu cuenta permanecerá abierta en este dispositivo hasta que decidas cerrar sesión explícitamente.
+                  </p>
                 </div>
 
                 <button
@@ -224,7 +311,8 @@ export const AuthScreen: React.FC = () => {
                     }}
                     className="text-xs text-slate-500 hover:text-slate-800 font-medium transition-colors cursor-pointer"
                   >
-                    ¿No tienes una cuenta aún? <span className="font-bold underline">Crear cuenta</span>
+                    ¿Deseas registrar un nuevo negocio o usuario?{' '}
+                    <span className="font-bold underline text-slate-900">Crear cuenta</span>
                   </button>
                 </div>
               </form>
@@ -267,16 +355,18 @@ export const AuthScreen: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1">
-                    Correo Electrónico *
+                    Usuario o Correo Electrónico *
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="email"
+                      type="text"
                       required
-                      value={regEmail}
-                      onChange={e => setRegEmail(e.target.value)}
-                      placeholder="tu@correo.com"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      value={regIdentifier}
+                      onChange={e => setRegIdentifier(e.target.value)}
+                      placeholder="ejemplo_usuario o tu@correo.com"
                       className="w-full pl-10 pr-3.5 py-2.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                     />
                   </div>
@@ -311,11 +401,17 @@ export const AuthScreen: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600">
+                  <p>
+                    Al crear tu cuenta, tu sesión permanecerá guardada y activa en este navegador hasta que decidas salir.
+                  </p>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full py-3 px-4 bg-slate-950 hover:bg-black text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  <span>Crear Cuenta</span>
+                  <span>Crear Cuenta y Entrar</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -328,7 +424,8 @@ export const AuthScreen: React.FC = () => {
                     }}
                     className="text-xs text-slate-500 hover:text-slate-800 font-medium transition-colors cursor-pointer"
                   >
-                    ¿Ya tienes una cuenta? <span className="font-bold underline">Iniciar sesión</span>
+                    ¿Ya tienes una cuenta?{' '}
+                    <span className="font-bold underline text-slate-900">Iniciar sesión</span>
                   </button>
                 </div>
               </form>

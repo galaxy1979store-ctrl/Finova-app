@@ -219,6 +219,7 @@ export type UserStatus = 'active' | 'banned';
 export interface UserAccount {
   id: string;
   email: string;
+  username?: string;
   passwordHash: string;
   fullName: string;
   businessName: string;

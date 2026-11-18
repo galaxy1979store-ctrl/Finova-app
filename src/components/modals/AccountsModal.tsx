@@ -176,19 +176,18 @@ export const AccountsModal: React.FC = () => {
               </button>
             ) : null}
 
-            {!currentUser && (
-              <button
-                onClick={() => {
-                  setIsAccountsModalOpen(false);
-                  setAuthModalMode('register');
-                  setIsAuthModalOpen(true);
-                }}
-                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <User className="w-4 h-4" />
-                <span>Crear Cuenta Nueva</span>
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setIsAccountsModalOpen(false);
+                setAuthModalMode('login');
+                setIsAuthModalOpen(true);
+              }}
+              className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              title="Cambiar usuario o iniciar otra sesión"
+            >
+              <User className="w-4 h-4" />
+              <span>Cambiar Usuario</span>
+            </button>
 
             <button
               onClick={() => {

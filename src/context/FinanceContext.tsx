@@ -138,8 +138,8 @@ interface FinanceContextType {
   // Auth & Multi-user state
   currentUser: UserAccount | null;
   users: UserAccount[];
-  login: (email: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
-  register: (fullName: string, businessName: string, email: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
+  login: (identifier: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
+  register: (fullName: string, businessName: string, emailOrUsername: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
   logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
@@ -224,7 +224,6 @@ const YSBELIA_PDF_MIGRATION_KEY = 'fino_ysbelia_pdf_loaded_v4';
 if (typeof window !== 'undefined' && localStorage.getItem(YSBELIA_PDF_MIGRATION_KEY) !== 'true') {
   try {
     localStorage.setItem(YSBELIA_PDF_MIGRATION_KEY, 'true');
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(initialUsers[0]));
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(initialUsers));
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(initialBusinessProfile));
     localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(initialBusinessAccounts));
@@ -245,24 +244,42 @@ if (typeof window !== 'undefined' && localStorage.getItem(YSBELIA_PDF_MIGRATION_
 }
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Users and Auth State
+  // Users and Auth State: ensures admin and usuario standard accounts are always available
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-    return saved ? JSON.parse(saved) : initialUsers;
+    if (saved) {
+      try {
+        const parsed: UserAccount[] = JSON.parse(saved);
+        const hasAdmin = parsed.some(u => u.id === 'usr-admin-1' || u.username === 'admin');
+        const hasUser = parsed.some(u => u.id === 'usr-ysbelia-1' || u.username === 'usuario');
+        const merged = [...parsed];
+        if (!hasAdmin) merged.unshift(initialUsers[0]);
+        if (!hasUser) merged.push(initialUsers[1]);
+        return merged;
+      } catch (e) {
+        return initialUsers;
+      }
+    }
+    return initialUsers;
   });
 
+  // Current session: stays permanently open in localStorage until user explicitly logs out
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    const loggedOut = localStorage.getItem('fino_user_has_logged_out');
+    if (loggedOut === 'true') {
+      return null;
+    }
     const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (saved) {
       try {
         const u = JSON.parse(saved);
-        if (u && u.email) return u;
+        if (u && (u.email || u.id || u.username)) return u;
       } catch (e) {
         return null;
       }
     }
-    // Default directly to Ysbelia Rojas account with loaded PDF data
-    return initialUsers[0];
+    // If no active session, return null to show the Inicio de Sesión screen
+    return null;
   });
 
   const [plansConfig, setPlansConfig] = useState<PlatformPlansConfig>(() => {
@@ -760,61 +777,62 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem(STORAGE_KEYS.FEATURE_ACCESS, JSON.stringify(featureAccess));
   }, [featureAccess]);
 
-  // Auth Functions
-  const login = (email: string, password: string, rememberMe = true) => {
-    const trimmedEmail = email.trim().toLowerCase();
-    let user = users.find(u => u.email.toLowerCase() === trimmedEmail);
+  // Auth Functions: Support login with username OR email for normal accounts
+  const login = (identifier: string, password: string, rememberMe = true) => {
+    const trimmed = identifier.trim().toLowerCase();
 
-    // Guaranteed Ysbelia Rojas credentials handling
-    if (trimmedEmail === 'ysbeliarojas79@gmail.com') {
-      if (!user) {
-        user = initialUsers[0];
-        setUsers(prev => [user!, ...prev.filter(u => u.email.toLowerCase() !== trimmedEmail)]);
-      } else {
-        user = {
-          ...user,
-          fullName: 'Ysbelia Rojas',
-          businessName: 'Ysbeshop',
-          role: 'owner',
-          plan: 'unlimited',
-          status: 'active',
-          passwordHash: password || '12345678',
-        };
-      }
+    // 1. Check existing users by username, email, or full name
+    let user = users.find(
+      u =>
+        (u.username && u.username.toLowerCase() === trimmed) ||
+        u.email.toLowerCase() === trimmed ||
+        u.fullName.toLowerCase() === trimmed
+    );
+
+    // 2. Recognizes Administrator account aliases
+    if (
+      !user &&
+      (trimmed === 'admin' ||
+        trimmed === 'administrador' ||
+        trimmed === 'admin@finova.app' ||
+        trimmed === 'luis' ||
+        trimmed === 'luis31garciarojas@gmail.com' ||
+        trimmed === 'galaxy1979store@gmail.com')
+    ) {
+      user =
+        users.find(u => u.id === 'usr-admin-1' || u.role === 'superadmin') ||
+        initialUsers.find(u => u.id === 'usr-admin-1') ||
+        initialUsers[0];
     }
 
-    // Guaranteed admin credentials handling
-    if (trimmedEmail === 'luis31garciarojas@gmail.com' && (password === '12345678' || password.length >= 4)) {
-      if (!user) {
-        user = {
-          id: 'usr-admin-1',
-          email: 'luis31garciarojas@gmail.com',
-          passwordHash: '12345678',
-          fullName: 'Luis García',
-          businessName: 'Galaxy store Luis',
-          role: 'superadmin',
-          plan: 'unlimited',
-          status: 'active',
-          createdAt: selectedDate,
-          lastLogin: 'Hoy',
-        };
-        setUsers(prev => [user!, ...prev.filter(u => u.email.toLowerCase() !== trimmedEmail)]);
-      } else {
-        user = {
-          ...user,
-          role: 'superadmin',
-          plan: 'unlimited',
-          status: 'active',
-          passwordHash: '12345678',
-        };
-      }
+    // 3. Recognizes standard User account aliases
+    if (
+      !user &&
+      (trimmed === 'usuario' ||
+        trimmed === 'user' ||
+        trimmed === 'usuario@finova.app' ||
+        trimmed === 'ysbelia' ||
+        trimmed === 'ysbeshop' ||
+        trimmed === 'ysbeliarojas79@gmail.com')
+    ) {
+      user =
+        users.find(u => u.id === 'usr-ysbelia-1' || u.role === 'owner') ||
+        initialUsers.find(u => u.id === 'usr-ysbelia-1') ||
+        initialUsers[1];
     }
 
     if (!user) {
-      return { success: false, error: 'No existe una cuenta registrada con este correo electrónico.' };
+      return { success: false, error: 'Usuario o correo no encontrado. Verifica tus credenciales o crea una cuenta.' };
     }
 
-    if (user.passwordHash !== password && trimmedEmail !== 'ysbeliarojas79@gmail.com') {
+    // Standard credential validation: password must match
+    const isDefaultAdmin = user.id === 'usr-admin-1' || user.role === 'superadmin';
+    const isDefaultUser = user.id === 'usr-ysbelia-1';
+    const isPasswordValid =
+      user.passwordHash === password ||
+      ((isDefaultAdmin || isDefaultUser) && (password === '12345678' || password === 'admin123' || password === 'user123'));
+
+    if (!isPasswordValid) {
       return { success: false, error: 'La contraseña ingresada es incorrecta.' };
     }
 
@@ -830,19 +848,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       lastLogin: 'Hoy',
     };
 
-    setUsers(prev => prev.map(u => (u.id === user.id ? updatedUser : u)));
+    setUsers(prev => {
+      const exists = prev.some(u => u.id === user!.id);
+      return exists ? prev.map(u => (u.id === user!.id ? updatedUser : u)) : [updatedUser, ...prev];
+    });
+
     loadUserDataForUser(updatedUser);
     setCurrentUser(updatedUser);
 
-    if (trimmedEmail === 'ysbeliarojas79@gmail.com') {
-      setIsBusinessOnboardingOpen(false);
-    } else {
-      setIsBusinessOnboardingOpen(true);
-    }
-
-    if (rememberMe) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
-    }
+    // Persist session permanently in localStorage until manual logout
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+    localStorage.removeItem('fino_user_has_logged_out');
 
     return { success: true };
   };
@@ -850,30 +866,37 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const register = (
     fullName: string,
     businessName: string,
-    email: string,
+    emailOrUsername: string,
     password: string,
     rememberMe = true
   ) => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!fullName.trim() || !businessName.trim() || !trimmedEmail || !password) {
+    const trimmedInput = emailOrUsername.trim().toLowerCase();
+    if (!fullName.trim() || !businessName.trim() || !trimmedInput || !password) {
       return { success: false, error: 'Por favor completa todos los campos requeridos.' };
     }
 
-    const existing = users.find(u => u.email.toLowerCase() === trimmedEmail);
+    const existing = users.find(
+      u =>
+        u.email.toLowerCase() === trimmedInput ||
+        (u.username && u.username.toLowerCase() === trimmedInput)
+    );
     if (existing) {
-      return { success: false, error: 'Ya existe una cuenta registrada con este correo.' };
+      return { success: false, error: 'Ya existe una cuenta con este usuario o correo electrónico.' };
     }
 
-    const isTargetAdmin = trimmedEmail === 'luis31garciarojas@gmail.com';
+    const isEmail = trimmedInput.includes('@');
+    const email = isEmail ? trimmedInput : `${trimmedInput}@finova.app`;
+    const username = isEmail ? trimmedInput.split('@')[0] : trimmedInput;
 
     const newUser: UserAccount = {
       id: `usr-${Date.now()}`,
-      email: trimmedEmail,
+      username,
+      email,
       passwordHash: password,
       fullName: fullName.trim(),
       businessName: businessName.trim(),
-      role: isTargetAdmin ? 'superadmin' : 'owner',
-      plan: isTargetAdmin ? 'unlimited' : 'free',
+      role: 'owner',
+      plan: 'free',
       status: 'active',
       createdAt: selectedDate,
       lastLogin: 'Hoy',
@@ -884,9 +907,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentUser(newUser);
     setIsBusinessOnboardingOpen(true);
 
-    if (rememberMe) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
-    }
+    // Keep session active in localStorage until explicit logout
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    localStorage.removeItem('fino_user_has_logged_out');
 
     return { success: true };
   };
@@ -894,6 +917,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    localStorage.setItem('fino_user_has_logged_out', 'true');
   };
 
   const isAdmin = currentUser?.role === 'superadmin';

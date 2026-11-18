@@ -10,6 +10,7 @@ import {
   CheckCircle,
   AlertCircle,
   Sparkles,
+  Crown,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 
@@ -167,19 +168,60 @@ export const AuthModal: React.FC = () => {
         {/* TAB 1: LOGIN */}
         {authModalMode === 'login' ? (
           <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+            {/* Cuentas estándar del sistema */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginEmail('admin');
+                  setLoginPassword('12345678');
+                }}
+                className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                  loginEmail === 'admin'
+                    ? 'bg-amber-400/15 border-amber-400'
+                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[11px] font-black text-slate-900">
+                  <Crown className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span>Admin</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">admin · 12345678</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginEmail('usuario');
+                  setLoginPassword('12345678');
+                }}
+                className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                  loginEmail === 'usuario'
+                    ? 'bg-amber-400/15 border-amber-400'
+                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[11px] font-black text-slate-900">
+                  <User className="w-3 h-3 text-slate-700" />
+                  <span>Usuario</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">usuario · 12345678</p>
+              </button>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Correo Electrónico
+                Usuario o Correo Electrónico
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   autoFocus
+                  autoCapitalize="none"
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="tu@negocio.com"
+                  placeholder="admin, usuario o tu@correo.com"
                   className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                 />
               </div>
@@ -269,16 +311,17 @@ export const AuthModal: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Correo Electrónico *
+                Usuario o Correo Electrónico *
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
+                  autoCapitalize="none"
                   value={regEmail}
                   onChange={e => setRegEmail(e.target.value)}
-                  placeholder="correo@ejemplo.com"
+                  placeholder="ejemplo_usuario o tu@correo.com"
                   className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:outline-hidden"
                 />
               </div>
